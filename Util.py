@@ -43,19 +43,27 @@ def d_convolution(conv, delta, kernel):
     no_channels, img_size, _ = conv.shape
 
     stride = 1
-    padding = int(kernel)
-    output_kernel = np.zeros((kernels.shape))
-    delta_output = np.zeros((conv.shape))
+    padding = int((kernel_size-1)/2)
+    output_kernel = np.zeros((kernel.shape))
+
 
     padded_conv = np.zeros( (no_channels, img_size +(2*padding), img_size+(2*padding)) )
     padded_conv[:,padding : img_size + padding,  padding:img_size+padding] = conv
 
+    delta_output = np.zeros((padded_conv.shape))
+
     for k in range(no_kernels):
         for  x in range(0,img_size):
             for y in range(0,img_size):
-                output_kernel[k] += delta[k,x,y] * padd_conv[:, x:x+kernel_size, y:y+kernel_size]
-                delta_output[]
+                output_kernel[k] += delta[k,x,y] * padded_conv[:, x:x+kernel_size, y:y+kernel_size]
+                delta_output[:, x:x+kernel_size, y:y+kernel_size] += delta[k,x,y] * kernel[k]
 
+    return output_kernel,delta_output
+    #delta I
+    # for c in range(0,no_channels):
+    #     for x in range(0,img_size):
+    #         for y in range(0,img_size):
+    #             output_delta[c: x, y] = delta[]
 
 
 
@@ -104,7 +112,6 @@ def d_pool(conv, delta, pool_shape, stride=2):
             Ix += stride
             x += 1
     return output_error_map
-
 
 def Softmax(X):
     exp = np.exp(X)
