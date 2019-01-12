@@ -42,7 +42,8 @@ bais_2 = 0
 bais_3 = 0
 
 # load input
-mnData = MNIST("/home/satyaprakash/Downloads/mnist")
+# mnData = MNIST("/home/satyaprakash/Downloads/mnist")
+mnData = MNIST("/mnt/66C2AAD8C2AAABAD/ML_init/DataSets/mnist")
 
 
 
@@ -52,7 +53,7 @@ def train():
     global kernel_1, kernel_2, weight_matrix_1, weight_matrix_2, weight_matrix_3, bais_1, bais_2, bais_3
 
     epoch = int(raw_input(' Epoch ....'))
-    itration = int(raw_input(' Itration ...'))
+    batchSize = int(raw_input(' batchSize ...'))
 
     # initialize Perameter
     if(os.path.isfile('/mnt/66C2AAD8C2AAABAD/ML_init/CNN/*.dat')):
@@ -89,6 +90,25 @@ def train():
     #Preparing input Data
     imgs,labels = mnData.load_training()
 
+    v1 = np.zeros(kernel_1.shape)
+    v2 = np.zeros(kernel_2.shape)
+    v3 = np.zeros(weight_matrix_1.shape)
+    v4 = np.zeros(weight_matrix_2.shape)
+    v5 = np.zeros(weight_matrix_3.shape)
+    bv1 = np.zeros(bais_1.shape)
+    bv2 = np.zeros(bais_2.shape)
+    bv3 = np.zeros(bais_3.shape)
+
+    s1 = np.zeros(kernel_1.shape)
+    s2 = np.zeros(kernel_2.shape)
+    s3 = np.zeros(weight_matrix_1.shape)
+    s4 = np.zeros(weight_matrix_2.shape)
+    s5 = np.zeros(weight_matrix_3.shape)
+    bs1 = np.zeros(bais_1.shape)
+    bs2 = np.zeros(bais_2.shape)
+    bs3 = np.zeros(bais_3.shape)
+
+
     while epoch > 0:
 
         D_kernel1 =0
@@ -100,11 +120,13 @@ def train():
         D_bais2 =0
         D_bais3 =0
 
+        i = 0
+        total_cost = 0
 
-        while itration > 0:
+        while i < batchSize:
 
-            img = np.array(imgs[itration]).reshape((1,28,28))
-            label = labels[itration]
+            img = np.array(imgs[i + (epoch * batchSize) ]).reshape((1,28,28))
+            label = labels[i + (epoch * batchSize)]
             labels_hot_enc = np.zeros((no_output_nodes,1))
             labels_hot_enc[label,0] = 1
 
@@ -132,10 +154,11 @@ def train():
 
             output_layer = np.dot(weight_matrix_3, hidden_layer_2) + bais_3
             probs = Softmax(output_layer) # Softmax
-            print 'pridiction :',probs.argmax(),' actual :',label, 'confidance :',probs.max()
+            # print 'pridiction :',probs.argmax(),' actual :',label, 'confidance :',probs.max()
 
             cost = cross_entropy_error(probs, labels_hot_enc)
-            print 'Cost :',cost
+            # print 'Cost :',cost
+            total_cost += cost
 
             # Back Propegation
             dout = probs - labels_hot_enc
@@ -145,12 +168,14 @@ def train():
             # print 'dedw3 max :',dedw3.max()
 
             delta2 = np.dot(weight_matrix_3.T,dout)
+            delta2[hidden_layer_2<0]=0
             dedw2 = np.dot(delta2, hidden_layer_1.T)
             dedb2 = np.sum(delta2, axis=1).reshape(bais_2.shape)
             # print 'dedw2 max :',dedw2.max()
 
 
             delta1 = np.dot(weight_matrix_2.T, delta2)
+            delta1[hidden_layer_1 < 0]=0
             dedw1 = np.dot(delta1,fc.T)
             dedb1 = np.sum(delta1,axis=1).reshape(bais_1.shape)
             # print 'dedw1 max :',dedw1.max()
@@ -178,23 +203,23 @@ def train():
             # print 'img shape :',img.shape
 
             # Update Perameters
-            # kernel_1 = kernel_1 - delta_kernel1
-            # kernel_2 = kernel_2 - delta_kernel2
-            # weight_matrix_1 = weight_matrix_1 - dedw1
-            # weight_matrix_2 = weight_matrix_2 - dedw2
-            # weight_matrix_3 = weight_matrix_3 - dedw3
-            # bais_1 = bais_1 - dedb1
-            # bais_2 = bais_2 - dedb2
-            # bais_3 = bais_3 - dedb3
+            kernel_1 = kernel_1 - delta_kernel1
+            kernel_2 = kernel_2 - delta_kernel2
+            weight_matrix_1 = weight_matrix_1 - dedw1
+            weight_matrix_2 = weight_matrix_2 - dedw2
+            weight_matrix_3 = weight_matrix_3 - dedw3
+            bais_1 = bais_1 - dedb1
+            bais_2 = bais_2 - dedb2
+            bais_3 = bais_3 - dedb3
 
-            D_kernel1 += delta_kernel1
-            D_kernel2 += delta_kernel2
-            D_weight_matrix1 += dedw1
-            D_weight_matrix2 += dedw2
-            D_weight_matrix3 += dedw3
-            D_bais1 += dedb1
-            D_bais2 += dedb2
-            D_bais3 += dedb3
+            # D_kernel1 += delta_kernel1
+            # D_kernel2 += delta_kernel2
+            # D_weight_matrix1 += dedw1
+            # D_weight_matrix2 += dedw2
+            # D_weight_matrix3 += dedw3
+            # D_bais1 += dedb1
+            # D_bais2 += dedb2
+            # D_bais3 += dedb3
 
 
             # print 'Dkernel_1 shape :',delta_kernel1.shape
@@ -206,28 +231,66 @@ def train():
             # print 'Dbais_2 shape :',dedb2.shape
             # print 'Dbais_3 shape :',dedb3.shape
 
-            print 'dkernel_1 max:',delta_kernel1.max(),' min:',delta_kernel1.min()
-            print 'dkernel_2 max:',delta_kernel2.max(),' min:',delta_kernel2.min()
-            print 'dweight_matrix_1 max:',weight_matrix_1.max(),' min:',weight_matrix_1.min()
-            print 'dweight_matrix_2 max:',weight_matrix_2.max(),' min:',weight_matrix_2.min()
-            print 'dweight_matrix_3 max:',weight_matrix_3.max(),' min:',weight_matrix_3.min()
-            print 'dbais_1 max:',bais_1.max(),' min:',bais_1.min()
-            print 'dbais_2 max:',bais_2.max(),' min:',bais_2.min()
-            print 'dbais_3 max:',bais_3.max(),' min:',bais_3.min()
+            # print 'dkernel_1 max:',delta_kernel1.max(),' min:',delta_kernel1.min()
+            # print 'dkernel_2 max:',delta_kernel2.max(),' min:',delta_kernel2.min()
+            # print 'dweight_matrix_1 max:',weight_matrix_1.max(),' min:',weight_matrix_1.min()
+            # print 'dweight_matrix_2 max:',weight_matrix_2.max(),' min:',weight_matrix_2.min()
+            # print 'dweight_matrix_3 max:',weight_matrix_3.max(),' min:',weight_matrix_3.min()
+            # print 'dbais_1 max:',bais_1.max(),' min:',bais_1.min()
+            # print 'dbais_2 max:',bais_2.max(),' min:',bais_2.min()
+            # print 'dbais_3 max:',bais_3.max(),' min:',bais_3.min()
 
-            itration -= 1
+            i += 1
+        #
+        # beta1 = 0.99
+        # beta2 = 0.90
+        #
+        # # Update Perameters
+        # v1 = beta1 * v1 + (1-beta1) * D_kernel1 / batchSize # momentum update
+        # s1 = beta2 * s1 + (1-beta2) *  (D_kernel1 / batchSize)**2 # RMSProp update
+        # kernel_1 -= v1/np.sqrt(s1+1e-7)
+        #
+        # v2 = beta1 * v2 + (1-beta1) * D_kernel2 / batchSize # momentum update
+        # s2 = beta2 * s2 + (1-beta2) *  (D_kernel2 / batchSize)**2 # RMSProp update
+        # kernel_2 -= v2/np.sqrt(s2+1e-7)
+        #
+        # v3 = beta1 * v3 + (1-beta1) * D_weight_matrix1 / batchSize # momentum update
+        # s3 = beta2 * s3 + (1-beta2) *  (D_weight_matrix1 / batchSize)**2 # RMSProp update
+        # weight_matrix_1 -= v3/np.sqrt(s3+1e-7)
+        #
+        # v4 = beta1 * v4 + (1-beta1) * D_weight_matrix2 / batchSize # momentum update
+        # s4 = beta2 * s4 + (1-beta2) *  (D_weight_matrix2 / batchSize)**2 # RMSProp update
+        # weight_matrix_2 -= v4/np.sqrt(s4+1e-7)
+        #
+        # v5 = beta1 * v5 + (1-beta1) * D_weight_matrix3 / batchSize # momentum update
+        # s5 = beta2 * s5 + (1-beta2) *  (D_weight_matrix3 / batchSize)**2 # RMSProp update
+        # weight_matrix_3 -= v5/np.sqrt(s5+1e-7)
+        #
+        # bv1 = beta1 * bv1 + (1-beta1) * D_bais1 / batchSize # momentum update
+        # bs1 = beta2 * bs1 + (1-beta2) *  (D_bais1 / batchSize)**2 # RMSProp update
+        # bais_1 -= bv1/np.sqrt(bs1+1e-7)
+        #
+        # bv2 = beta1 * bv2 + (1-beta1) * D_bais2 / batchSize # momentum update
+        # bs2 = beta2 * bs2 + (1-beta2) *  (D_bais2 / batchSize)**2 # RMSProp update
+        # bais_2 -= bv2/np.sqrt(bs2+1e-7)
+        #
+        # bv3 = beta1 * bv3 + (1-beta1) * D_bais3 / batchSize # momentum update
+        # bs3 = beta2 * bs3 + (1-beta2) *  (D_bais3 / batchSize)**2 # RMSProp update
+        # bais_3 -= bv3/np.sqrt(bs3+1e-7)
 
-        # Update Perameters
-        kernel_1 -= D_kernel1 / itration
-        kernel_2 -= D_kernel2 / itration
-        weight_matrix_1 -= D_weight_matrix1 / itration
-        weight_matrix_2 -= D_weight_matrix2 / itration
-        weight_matrix_3 -= D_weight_matrix3 / itration
-        bais_1 -=  D_bais1 / itration
-        bais_2 -=  D_bais2 / itration
-        bais_3 -=  D_bais3 / itration
+
+        print 'Epoch :',epoch ,' Total Cost :',total_cost/batchSize
 
         epoch -= 1
+
+    kernel_1.dump('kernel_1.dat')
+    kernel_2.dump('kernel_2.dat')
+    weight_matrix_1.dump('weight_matrix_1.dat')
+    weight_matrix_2.dump('weight_matrix_2.dat')
+    weight_matrix_3.dump('weight_matrix_3.dat')
+    bais_1.dump('bais_1.dat')
+    bais_2.dump('bais_2.dat')
+    bais_3.dump('bais_3.dat')
 
 def start():
     mode = raw_input("press 't' to Train and 'r' to test... ")
