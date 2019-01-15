@@ -52,11 +52,12 @@ def train():
 
     global kernel_1, kernel_2, weight_matrix_1, weight_matrix_2, weight_matrix_3, bais_1, bais_2, bais_3
 
+    epslone = 0.0001
     epoch = int(raw_input(' Epoch ....'))
     batchSize = int(raw_input(' batchSize ...'))
 
     # initialize Perameter
-    if(os.path.isfile('/mnt/66C2AAD8C2AAABAD/ML_init/CNN/*.dat')):
+    if(os.path.isfile('/mnt/66C2AAD8C2AAABAD/ML_init/CNN/kernel_1.dat')):
         print 'Starting from last, loading old kernels....'
         kernel_1 = np.load('kernel_1.dat')
         kernel_2 = np.load('kernel_2.dat')
@@ -90,69 +91,46 @@ def train():
     #Preparing input Data
     imgs,labels = mnData.load_training()
 
-    v1 = np.zeros(kernel_1.shape)
-    v2 = np.zeros(kernel_2.shape)
-    v3 = np.zeros(weight_matrix_1.shape)
-    v4 = np.zeros(weight_matrix_2.shape)
-    v5 = np.zeros(weight_matrix_3.shape)
-    bv1 = np.zeros(bais_1.shape)
-    bv2 = np.zeros(bais_2.shape)
-    bv3 = np.zeros(bais_3.shape)
-
-    s1 = np.zeros(kernel_1.shape)
-    s2 = np.zeros(kernel_2.shape)
-    s3 = np.zeros(weight_matrix_1.shape)
-    s4 = np.zeros(weight_matrix_2.shape)
-    s5 = np.zeros(weight_matrix_3.shape)
-    bs1 = np.zeros(bais_1.shape)
-    bs2 = np.zeros(bais_2.shape)
-    bs3 = np.zeros(bais_3.shape)
-
-
     while epoch > 0:
-
-        D_kernel1 =0
-        D_kernel2 =0
-        D_weight_matrix1 =0
-        D_weight_matrix2 =0
-        D_weight_matrix3 =0
-        D_bais1 =0
-        D_bais2 =0
-        D_bais3 =0
 
         i = 0
         total_cost = 0
 
         while i < batchSize:
 
-            img = np.array(imgs[i + (epoch * batchSize) ]).reshape((1,28,28))
+            img = np.array(imgs[i + (epoch * batchSize) ]).astype(np.float32).reshape((1,28,28))
+
+            img -= int(np.mean(img))
+            img /= int(np.std(img))
+
             label = labels[i + (epoch * batchSize)]
             labels_hot_enc = np.zeros((no_output_nodes,1))
             labels_hot_enc[label,0] = 1
 
             # Feed Forward
 
-            conv1 = convolution(img,kernel_1)
-            conv1[conv1<0] = 0 # Leaky relu
-            pooled_1 = pool(conv1,pool_shape)
+            relu1 = conv1 = convolution(img,kernel_1)
+            relu1 [conv1<0] = 0 # Leaky relu
+            pooled_1 = pool(relu1,pool_shape)
             # print 'pooled_1 max :',pooled_1.max()
 
-            conv2 = convolution(pooled_1,kernel_2)
-            conv2[conv2<0] = 0 #Leaky relu
-            pooled_2 = pool(conv2,pool_shape)
+            relu2 = conv2 = convolution(pooled_1,kernel_2)
+            relu2[conv2<0] = 0 #Leaky relu
+            pooled_2 = pool(relu2,pool_shape)
             # print 'pooled_2 max :',pooled_2.max()
 
-            fc = pooled_2.flatten().reshape(no_fc_nodes,1)  # flatten img
+            fc = pooled_2.reshape(no_fc_nodes,1)  # flatten img
 
-            hidden_layer_1 = np.dot(weight_matrix_1, fc) + bais_1
-            hidden_layer_1[hidden_layer_1<0]=0 # Leaky Relu
+            relu3 = hidden_layer_1 = weight_matrix_1.dot(fc) + bais_1
+            relu3[hidden_layer_1<0]=0 # Leaky Relu
             # print 'layer_1 max:',hidden_layer_1.max()
 
-            hidden_layer_2 = np.dot(weight_matrix_2, hidden_layer_1) + bais_2
-            hidden_layer_2[hidden_layer_2<0]=0 # Leaky Relu
+            relu4 = hidden_layer_2 = weight_matrix_2.dot(relu3) + bais_2
+            relu4[hidden_layer_2<0]=0 # Leaky Relu
             # print 'layer_2 max:',hidden_layer_2.max()
 
-            output_layer = np.dot(weight_matrix_3, hidden_layer_2) + bais_3
+            output_layer = weight_matrix_3.dot(relu4) + bais_3
+
             probs = Softmax(output_layer) # Softmax
             # print 'pridiction :',probs.argmax(),' actual :',label, 'confidance :',probs.max()
 
@@ -163,28 +141,31 @@ def train():
             # Back Propegation
             dout = probs - labels_hot_enc
 
-            dedw3 = np.dot(dout, hidden_layer_2.T)
+            # print 'probs :',probs,'\n label :',labels_hot_enc,' \n dout :',dout
+
+            print '\ndout max :',dout.max(),' min:', dout.min()
+            dedw3 = dout.dot(relu4.T)
             dedb3 = np.sum(dout,axis=1).reshape(bais_3.shape)
-            # print 'dedw3 max :',dedw3.max()
+            print 'dedw3 max :',dedw3.max(),' min:', dedw3.min(),' i :',i
 
-            delta2 = np.dot(weight_matrix_3.T,dout)
+            delta2 = weight_matrix_3.T.dot(dout)
             delta2[hidden_layer_2<0]=0
-            dedw2 = np.dot(delta2, hidden_layer_1.T)
+            dedw2 = delta2.dot(relu3.T)
             dedb2 = np.sum(delta2, axis=1).reshape(bais_2.shape)
-            # print 'dedw2 max :',dedw2.max()
+            print 'dedw2 max :',dedw2.max(),' min:',dedw2.min()
 
 
-            delta1 = np.dot(weight_matrix_2.T, delta2)
+            delta1 = weight_matrix_2.T.dot(delta2)
             delta1[hidden_layer_1 < 0]=0
-            dedw1 = np.dot(delta1,fc.T)
+            dedw1 = delta1.dot(fc.T)
             dedb1 = np.sum(delta1,axis=1).reshape(bais_1.shape)
-            # print 'dedw1 max :',dedw1.max()
+            print 'dedw1 max :',dedw1.max(),' min:',dedw1.min()
 
             delta0 = np.dot(weight_matrix_1.T, delta1).reshape(pooled_2.shape)
             # print 'delta 0 :',delta0.shape
 
             # conv layer-2
-            dconv2 = d_pool(conv2,delta0,pool_shape)
+            dconv2 = d_pool(relu2,delta0,pool_shape)
             # print 'dconv2 shape :',dconv2.shape
             dconv2[conv2<0] = 0
             # Decone-2
@@ -194,7 +175,7 @@ def train():
             # print 'pooled 1 shape :',pooled_1.shape
 
             # conv layer -1
-            dconv1 = d_pool(conv1,delta_conv2,pool_shape)
+            dconv1 = d_pool(relu1,delta_conv2,pool_shape)
             # print 'dconv1 shape :',dconv1.shape
             dconv1[conv1<0] = 0
             delta_kernel1, delta_conv1 = d_convolution(img, dconv1, kernel_1)
@@ -202,82 +183,22 @@ def train():
             # print 'delta_conv1 shape:',delta_conv1.shape
             # print 'img shape :',img.shape
 
+            # fdw2 = dedw2.flatten()
+            # fdw3 = dedw3.flatten()
+            #
+
             # Update Perameters
-            kernel_1 = kernel_1 - delta_kernel1
-            kernel_2 = kernel_2 - delta_kernel2
-            weight_matrix_1 = weight_matrix_1 - dedw1
-            weight_matrix_2 = weight_matrix_2 - dedw2
-            weight_matrix_3 = weight_matrix_3 - dedw3
-            bais_1 = bais_1 - dedb1
-            bais_2 = bais_2 - dedb2
-            bais_3 = bais_3 - dedb3
+            kernel_1 = kernel_1 - (delta_kernel1)*0.1
+            kernel_2 = kernel_2 - (delta_kernel2)*0.1
+            weight_matrix_1 = weight_matrix_1 - (dedw1)*0.1
+            weight_matrix_2 = weight_matrix_2 - (dedw2)*0.1
+            weight_matrix_3 = weight_matrix_3 - (dedw3)*0.1
+            bais_1 = bais_1 - (dedb1)*0.1
+            bais_2 = bais_2 - (dedb2)*0.1
+            bais_3 = bais_3 - (dedb3)*0.1
 
-            # D_kernel1 += delta_kernel1
-            # D_kernel2 += delta_kernel2
-            # D_weight_matrix1 += dedw1
-            # D_weight_matrix2 += dedw2
-            # D_weight_matrix3 += dedw3
-            # D_bais1 += dedb1
-            # D_bais2 += dedb2
-            # D_bais3 += dedb3
-
-
-            # print 'Dkernel_1 shape :',delta_kernel1.shape
-            # print 'Dkernel_2 shape :',delta_kernel2.shape
-            # print 'Dweight_matrix_1 shape :',dedw1.shape
-            # print 'Dweight_matrix_2 shape :',dedw2.shape
-            # print 'Dweight_matrix_3 shape :',dedw3.shape
-            # print 'Dbais_1 shape :',dedb1.shape
-            # print 'Dbais_2 shape :',dedb2.shape
-            # print 'Dbais_3 shape :',dedb3.shape
-
-            # print 'dkernel_1 max:',delta_kernel1.max(),' min:',delta_kernel1.min()
-            # print 'dkernel_2 max:',delta_kernel2.max(),' min:',delta_kernel2.min()
-            # print 'dweight_matrix_1 max:',weight_matrix_1.max(),' min:',weight_matrix_1.min()
-            # print 'dweight_matrix_2 max:',weight_matrix_2.max(),' min:',weight_matrix_2.min()
-            # print 'dweight_matrix_3 max:',weight_matrix_3.max(),' min:',weight_matrix_3.min()
-            # print 'dbais_1 max:',bais_1.max(),' min:',bais_1.min()
-            # print 'dbais_2 max:',bais_2.max(),' min:',bais_2.min()
-            # print 'dbais_3 max:',bais_3.max(),' min:',bais_3.min()
 
             i += 1
-        #
-        # beta1 = 0.99
-        # beta2 = 0.90
-        #
-        # # Update Perameters
-        # v1 = beta1 * v1 + (1-beta1) * D_kernel1 / batchSize # momentum update
-        # s1 = beta2 * s1 + (1-beta2) *  (D_kernel1 / batchSize)**2 # RMSProp update
-        # kernel_1 -= v1/np.sqrt(s1+1e-7)
-        #
-        # v2 = beta1 * v2 + (1-beta1) * D_kernel2 / batchSize # momentum update
-        # s2 = beta2 * s2 + (1-beta2) *  (D_kernel2 / batchSize)**2 # RMSProp update
-        # kernel_2 -= v2/np.sqrt(s2+1e-7)
-        #
-        # v3 = beta1 * v3 + (1-beta1) * D_weight_matrix1 / batchSize # momentum update
-        # s3 = beta2 * s3 + (1-beta2) *  (D_weight_matrix1 / batchSize)**2 # RMSProp update
-        # weight_matrix_1 -= v3/np.sqrt(s3+1e-7)
-        #
-        # v4 = beta1 * v4 + (1-beta1) * D_weight_matrix2 / batchSize # momentum update
-        # s4 = beta2 * s4 + (1-beta2) *  (D_weight_matrix2 / batchSize)**2 # RMSProp update
-        # weight_matrix_2 -= v4/np.sqrt(s4+1e-7)
-        #
-        # v5 = beta1 * v5 + (1-beta1) * D_weight_matrix3 / batchSize # momentum update
-        # s5 = beta2 * s5 + (1-beta2) *  (D_weight_matrix3 / batchSize)**2 # RMSProp update
-        # weight_matrix_3 -= v5/np.sqrt(s5+1e-7)
-        #
-        # bv1 = beta1 * bv1 + (1-beta1) * D_bais1 / batchSize # momentum update
-        # bs1 = beta2 * bs1 + (1-beta2) *  (D_bais1 / batchSize)**2 # RMSProp update
-        # bais_1 -= bv1/np.sqrt(bs1+1e-7)
-        #
-        # bv2 = beta1 * bv2 + (1-beta1) * D_bais2 / batchSize # momentum update
-        # bs2 = beta2 * bs2 + (1-beta2) *  (D_bais2 / batchSize)**2 # RMSProp update
-        # bais_2 -= bv2/np.sqrt(bs2+1e-7)
-        #
-        # bv3 = beta1 * bv3 + (1-beta1) * D_bais3 / batchSize # momentum update
-        # bs3 = beta2 * bs3 + (1-beta2) *  (D_bais3 / batchSize)**2 # RMSProp update
-        # bais_3 -= bv3/np.sqrt(bs3+1e-7)
-
 
         print 'Epoch :',epoch ,' Total Cost :',total_cost/batchSize
 
