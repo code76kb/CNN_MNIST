@@ -48,7 +48,7 @@ def d_convolution(conv, delta, kernel):
 
 
     padded_conv = np.zeros( (no_channels, img_size +(2*padding), img_size+(2*padding)) )
-    padded_conv[:,padding : img_size + padding,  padding:img_size+padding] = conv
+    padded_conv[:, padding : img_size + padding,  padding:img_size+padding] = conv
 
     delta_output = np.zeros((padded_conv.shape))
 
@@ -64,7 +64,6 @@ def d_convolution(conv, delta, kernel):
     #     for x in range(0,img_size):
     #         for y in range(0,img_size):
     #             output_delta[c: x, y] = delta[]
-
 
 
 
@@ -114,8 +113,12 @@ def d_pool(conv, delta, pool_shape, stride=2):
     return output_error_map
 
 def Softmax(X):
-    exp = np.exp(X)
-    return exp / exp.sum()
+    # X = X-X.max()  #normalize
+    X -= X.mean()
+    X /= X.std()
+
+    expp = np.exp(X)
+    return expp / expp.sum()
 
 def cross_entropy_error(probs,labels):
     return -np.sum(labels * np.log(probs))
