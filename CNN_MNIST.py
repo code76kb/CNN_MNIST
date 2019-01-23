@@ -4,17 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mnist import MNIST
 import os
-
+import time
 from Util import *
 
 # Hyper Perameter
-no_kernels_1 = 18
-no_kernels_2 = 10
-kernel_shape = (1,3,3)
+no_kernels_1 = 32
+no_kernels_2 = 16
+kernel_shape = (1,5,5)
 kernel_1 = 0
 kernel_2 = 0
-kernel_1_shape = (no_kernels_1,1,3,3)
-kernel_2_shape = (no_kernels_2,no_kernels_1,3,3)
+kernel_1_shape = (no_kernels_1,1,5,5)
+kernel_2_shape = (no_kernels_2,no_kernels_1,5,5)
 pool_shape = (2,2)
 no_conv_layer = 2
 
@@ -22,7 +22,7 @@ no_conv_layer = 2
 no_hidden_layer = 2
 
 no_fc_nodes = (1*7*7)*no_kernels_2
-no_hidden_nodes_1 = 200
+no_hidden_nodes_1 = 400
 no_hidden_nodes_2 = 100
 no_output_nodes = 10
 
@@ -52,13 +52,13 @@ def train():
 
     global kernel_1, kernel_2, weight_matrix_1, weight_matrix_2, weight_matrix_3, bais_1, bais_2, bais_3
 
-    epslone = 0.0001
+    epslone = 0.01
     epoch = int(raw_input(' Epoch ....'))
     till = int(raw_input('Till.......'))
     batchSize = int(raw_input(' batchSize ...'))
 
-    LR = 0.0001
-    beta = 0.9
+    LR = 0.000001
+    beta = 0.90
 
     vk1 = 0
     vk2 = 0
@@ -105,6 +105,11 @@ def train():
     #Preparing input Data
     imgs,labels = mnData.load_training()
 
+    accuracy = 0
+    avrCost = 0
+    iteration = epoch - till
+    print 'epoch :',epoch
+    startTime = time.time()
     while epoch > till:
 
         i = 0
@@ -121,12 +126,12 @@ def train():
 
         while i < batchSize:
 
-            img = np.array(imgs[i + (epoch * batchSize) ]).astype(np.float32).reshape((1,28,28))
+            img = np.array(imgs[(epoch - i) ]).astype(np.float32).reshape((1,28,28))
 
             img -= (np.mean(img))
             img /= (np.std(img))
 
-            label = labels[i + (epoch * batchSize)]
+            label = labels[ epoch - i ]
             labels_hot_enc = np.zeros((no_output_nodes,1))
             labels_hot_enc[label,0] = 1
 
@@ -157,10 +162,14 @@ def train():
             probs = Softmax(output_layer) # Softmax
 
             print 'pridiction :',probs.argmax(),' actual :',label, 'confidance :',probs.max()
+            if(probs.argmax() == label):
+                accuracy += 1
+
 
             cost = cross_entropy_error(probs, labels_hot_enc)
             # print 'Cost :',cost
             total_cost += cost
+
 
             # Back Propegation
             dout = probs - labels_hot_enc
@@ -211,14 +220,14 @@ def train():
             # fdw3 = dedw3.flatten()
             #
 
-            # dk1_ += delta_kernel1
-            # dk2_ += delta_kernel2
-            # dw1_ += dedw1
-            # dw2_ += dedw2
-            # dw3_ += dedw3
-            # db1_ += dedb1
-            # db2_ += dedb2
-            # db3_ += dedb3
+            dk1_ += delta_kernel1
+            dk2_ += delta_kernel2
+            dw1_ += dedw1
+            dw2_ += dedw2
+            dw3_ += dedw3
+            db1_ += dedb1
+            db2_ += dedb2
+            db3_ += dedb3
 
             # Update Perameters
             # kernel_1 = kernel_1 - (delta_kernel1)*0.01
@@ -242,36 +251,140 @@ def train():
 
             i += 1
         # Update Perameters
-        # vk1 =  (dk1_/batchSize)
-        # vk2 =  (dk2_/batchSize)
-        # vw1 =  (dw1_/batchSize)
-        # vw2 =  (dw2_/batchSize)
-        # vw3 =  (dw3_/batchSize)
-        # vb1 =  (db1_/batchSize)
-        # vb2 =  (db2_/batchSize)
-        # vb3 =  (db3_/batchSize)
+        # vk1 =  (vk1*beta)+(1-beta)*(dk1_/batchSize)
+        # vk2 =  (vk2*beta)+(1-beta)*(dk2_/batchSize)
+        # vw1 =  (vw1*beta)+(1-beta)*(dw1_/batchSize)
+        # vw2 =  (vw2*beta)+(1-beta)*(dw2_/batchSize)
+        # vw3 =  (vw3*beta)+(1-beta)*(dw3_/batchSize)
+        # vb1 =  (vb1*beta)+(1-beta)*(db1_/batchSize)
+        # vb2 =  (vb2*beta)+(1-beta)*(db2_/batchSize)
+        # vb3 =  (vb3*beta)+(1-beta)*(db3_/batchSize)
 
-        kernel_1 -= delta_kernel1 * LR
-        kernel_2 -= delta_kernel2 * LR
-        weight_matrix_1 -= dedw1 * LR
-        weight_matrix_2 -= dedw2 * LR
-        weight_matrix_3 -= dedw3 * LR
-        bais_1 -= dedb1 * LR
-        bais_2 -= dedb2 * LR
-        bais_3 -= dedb3 * LR
+        vk1 =  (dk1_/batchSize)
+        vk2 =  (dk2_/batchSize)
+        vw1 =  (dw1_/batchSize)
+        vw2 =  (dw2_/batchSize)
+        vw3 =  (dw3_/batchSize)
+        vb1 =  (db1_/batchSize)
+        vb2 =  (db2_/batchSize)
+        vb3 =  (db3_/batchSize)
+
+        kernel_1 -= vk1 * LR
+        kernel_2 -= vk2 * LR
+        weight_matrix_1 -= vw1 * LR
+        weight_matrix_2 -= vw2 * LR
+        weight_matrix_3 -= vw3 * LR
+        bais_1 -= vb1 * LR
+        bais_2 -= vb2 * LR
+        bais_3 -= vb3 * LR
 
         print 'Epoch :',epoch ,' Total Cost :',total_cost/batchSize
+        avrCost += total_cost
 
-        epoch -= 1
+        epoch -= batchSize #1
 
-    kernel_1.dump('kernel_1.dat')
-    kernel_2.dump('kernel_2.dat')
-    weight_matrix_1.dump('weight_matrix_1.dat')
-    weight_matrix_2.dump('weight_matrix_2.dat')
-    weight_matrix_3.dump('weight_matrix_3.dat')
-    bais_1.dump('bais_1.dat')
-    bais_2.dump('bais_2.dat')
-    bais_3.dump('bais_3.dat')
+    print '\nAvg Cost  :',avrCost/(iteration), '\n Accuracy :',accuracy/iteration
+    print '\n took :', ((time.time()-startTime)/60),' mins.'
+    save = raw_input('save learning ?')
+    if(save == 'y'):
+        print 'Saving ...'
+        kernel_1.dump('kernel_1.dat')
+        kernel_2.dump('kernel_2.dat')
+        weight_matrix_1.dump('weight_matrix_1.dat')
+        weight_matrix_2.dump('weight_matrix_2.dat')
+        weight_matrix_3.dump('weight_matrix_3.dat')
+        bais_1.dump('bais_1.dat')
+        bais_2.dump('bais_2.dat')
+        bais_3.dump('bais_3.dat')
+
+
+#Show
+
+def show(conv1):
+    i,_,_ = conv1.shape
+
+    for k in range(i):
+        plt.subplot(i,1,k+1)
+        plt.imshow(conv1[k,:,:])
+
+    plt.show()
+
+def showK(conv1):
+    i,_,s1,s2 = conv1.shape
+
+    for k in range(i):
+        plt.subplot(i,1,k+1)
+        plt.imshow((conv1[k,:,:,:]).reshape(s1,s2))
+
+    plt.show()
+
+
+#Test
+def test():
+
+    #Preparing input Data
+    imgs,labels = mnData.load_training()
+
+    kernel_1 = np.load('kernel_1.dat')
+    kernel_2 = np.load('kernel_2.dat')
+
+    weight_matrix_1 = np.load('weight_matrix_1.dat')
+    weight_matrix_2 = np.load('weight_matrix_2.dat')
+    weight_matrix_3 = np.load('weight_matrix_3.dat')
+    bais_1 = np.load('bais_1.dat')
+    bais_2 = np.load('bais_2.dat')
+    bais_3 = np.load('bais_3.dat')
+
+    till = int(raw_input('till....'))
+    accuracy = 0
+    i = 0
+    multipal = int(raw_input('from....'))
+    while(i < till):
+        img = np.array(imgs[multipal+i]).astype(np.float32).reshape((1,28,28))
+        label = labels[multipal+i]
+
+        img -= (np.mean(img))
+        img /= (np.std(img))
+
+        # Feed Forward
+
+        relu1 = conv1 = convolution(img,kernel_1)
+        relu1 [conv1<0] = 0.01 # Leaky relu
+        pooled_1 = pool(relu1,pool_shape)
+        # print 'pooled_1 max :',pooled_1.max()
+
+        relu2 = conv2 = convolution(pooled_1,kernel_2)
+        relu2[conv2<0] = 0.01 #Leaky relu
+        pooled_2 = pool(relu2,pool_shape)
+        # print 'pooled_2 max :',pooled_2.max()
+
+        fc = pooled_2.reshape(no_fc_nodes,1)  # flatten img
+
+        relu3 = hidden_layer_1 = weight_matrix_1.dot(fc) + bais_1
+        relu3[hidden_layer_1<0] = 0.01 # Leaky Relu
+        # print 'layer_1 max:',hidden_layer_1.max()
+
+        relu4 = hidden_layer_2 = weight_matrix_2.dot(relu3) + bais_2
+        relu4[hidden_layer_2<0] = 0.01 # Leaky Relu
+        # print 'layer_2 max:',hidden_layer_2.max()
+
+        output_layer = weight_matrix_3.dot(relu4) + bais_3
+
+        probs = Softmax(output_layer) # Softmax
+
+        print 'pridiction :',probs.argmax(),' actual :',label, 'confidance :',probs.max()
+        i += 1
+        if(probs.argmax() == label):
+            accuracy += 1
+
+        show(conv1)
+        show(conv2)
+
+    print 'test accuracy :',accuracy/till
+
+
+
+
 
 def start():
     mode = raw_input("press 't' to Train and 'r' to test... ")
