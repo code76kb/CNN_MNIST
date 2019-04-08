@@ -8,21 +8,20 @@ import time
 from Util import *
 
 # Hyper Perameter
-no_kernels_1 = 32
-no_kernels_2 = 16
-kernel_shape = (1,5,5)
+no_kernels_0 = 8
+no_kernels_1 = 16
+kernel_shape = (1,3,3)
+kernel_0 = 0
 kernel_1 = 0
-kernel_2 = 0
-kernel_1_shape = (no_kernels_1,1,5,5)
-kernel_2_shape = (no_kernels_2,no_kernels_1,5,5)
+kernel_0_shape = (no_kernels_0,1,3,3)
+kernel_1_shape = (no_kernels_1,no_kernels_0,3,3)
 pool_shape = (2,2)
 no_conv_layer = 2
 
-
 no_hidden_layer = 2
 
-no_fc_nodes = (1*7*7)*no_kernels_2
-no_hidden_nodes_1 = 400
+no_fc_nodes = (1*7*7)*no_kernels_1
+no_hidden_nodes_1 = 200
 no_hidden_nodes_2 = 100
 no_output_nodes = 10
 
@@ -48,32 +47,24 @@ mnData = MNIST("/home/satyaprakash/Downloads/mnist")
 
 
 # Train
-def train():
+def train(test):
 
-    global kernel_1, kernel_2, weight_matrix_1, weight_matrix_2, weight_matrix_3, bais_1, bais_2, bais_3
+    global kernel_0, kernel_1, weight_matrix_1, weight_matrix_2, weight_matrix_3, bais_1, bais_2, bais_3
 
     epslone = 0.01
-    epoch = int(raw_input(' Epoch ....'))
+    start = int(raw_input(' From ....'))
     till = int(raw_input('Till.......'))
     batchSize = int(raw_input(' batchSize ...'))
 
-    LR = 0.000001
-    beta = 0.90
+    LR = 0.01
 
-    vk1 = 0
-    vk2 = 0
-    vw1 = 0
-    vw2 = 0
-    vw3 = 0
-    vb1 = 0
-    vb2 = 0
-    vb3 = 0
 
     # initialize Perameter
     if(os.path.isfile('/home/satyaprakash/CNN_MNIST/kernel_1.dat')):
         print 'Starting from last, loading old kernels....'
+
+        kernel_0 = np.load('kernel_0.dat')
         kernel_1 = np.load('kernel_1.dat')
-        kernel_2 = np.load('kernel_2.dat')
 
         weight_matrix_1 = np.load('weight_matrix_1.dat')
         weight_matrix_2 = np.load('weight_matrix_2.dat')
@@ -84,8 +75,8 @@ def train():
 
     else:
         print 'initializing Perameters........'
+        kernel_0 = initializeKernel(kernel_0_shape)
         kernel_1 = initializeKernel(kernel_1_shape)
-        kernel_2 = initializeKernel(kernel_2_shape)
         weight_matrix_1 = initializeWeights(weight_matrix_1_shape)
         weight_matrix_2 = initializeWeights(weight_matrix_2_shape)
         weight_matrix_3 = initializeWeights(weight_matrix_3_shape)
@@ -93,8 +84,8 @@ def train():
         bais_2 = np.zeros(bais_2_shape)
         bais_3 = np.zeros(bais_3_shape)
 
+        print 'kernel_0 shape :',kernel_0.shape
         print 'kernel_1 shape :',kernel_1.shape
-        print 'kernel_2 shape :',kernel_2.shape
         print 'weight_matrix_1 shape :',weight_matrix_1.shape
         print 'weight_matrix_2 shape :',weight_matrix_2.shape
         print 'weight_matrix_3 shape :',weight_matrix_3.shape
@@ -107,58 +98,48 @@ def train():
 
     accuracy = 0
     avrCost = 0
-    iteration = epoch - till
-    print 'epoch :',epoch
+    iteration = start - till
+    print 'from :',start
     startTime = time.time()
-    while epoch > till:
+    while start > till:
 
         i = 0
         total_cost = 0
-        dk1_ = 0
-        dk2_ = 0
-        dw1_ = 0
-        dw2_ = 0
-        dw3_ = 0
-        db1_ = 0
-        db2_ = 0
-        db3_ = 0
-
 
         while i < batchSize:
 
-            img = np.array(imgs[(epoch - i) ]).astype(np.float32).reshape((1,28,28))
+            img = np.array(imgs[(start - i) ]).astype(np.float32).reshape((1,28,28))
 
             img -= (np.mean(img))
             img /= (np.std(img))
 
-            label = labels[ epoch - i ]
+            label = labels[ start - i ]
             labels_hot_enc = np.zeros((no_output_nodes,1))
             labels_hot_enc[label,0] = 1
 
             # Feed Forward
 
-            relu1 = conv1 = convolution(img,kernel_1)
-            relu1 [conv1<0] = 0.01 # Leaky relu
+            conv0 = convolution(img,kernel_0)
+            relu0 = np.array(conv0)
+            relu0 [conv0<0] = 0.01 # Leaky relu
+            pooled_0 = pool(relu0,pool_shape)
+
+            conv1 = convolution(pooled_0,kernel_1)
+            relu1 = np.array(conv1)
+            relu1[conv1<0] = 0.01 # Leaky relu
             pooled_1 = pool(relu1,pool_shape)
-            # print 'pooled_1 max :',pooled_1.max()
 
-            relu2 = conv2 = convolution(pooled_1,kernel_2)
-            relu2[conv2<0] = 0.01 #Leaky relu
-            pooled_2 = pool(relu2,pool_shape)
-            # print 'pooled_2 max :',pooled_2.max()
+            fc = pooled_1.reshape(no_fc_nodes,1)  # flatten img
 
-            fc = pooled_2.reshape(no_fc_nodes,1)  # flatten img
-
-            relu3 = hidden_layer_1 = weight_matrix_1.dot(fc) + bais_1
+            hidden_layer_1 = weight_matrix_1.dot(fc) + bais_1
+            relu3 = np.array(hidden_layer_1)
             relu3[hidden_layer_1<0] = 0.01 # Leaky Relu
-            # print 'layer_1 max:',hidden_layer_1.max()
 
-            relu4 = hidden_layer_2 = weight_matrix_2.dot(relu3) + bais_2
+            hidden_layer_2 = weight_matrix_2.dot(relu3) + bais_2
+            relu4 = np.array(hidden_layer_2)
             relu4[hidden_layer_2<0] = 0.01 # Leaky Relu
-            # print 'layer_2 max:',hidden_layer_2.max()
 
             output_layer = weight_matrix_3.dot(relu4) + bais_3
-
             probs = Softmax(output_layer) # Softmax
 
             print 'pridiction :',probs.argmax(),' actual :',label, 'confidance :',probs.max()
@@ -170,126 +151,66 @@ def train():
             # print 'Cost :',cost
             total_cost += cost
 
-
             # Back Propegation
             dout = probs - labels_hot_enc
 
-            # print 'probs :',probs,'\n label :',labels_hot_enc,' \n dout :',dout
+            delta_w3 = dout.dot(relu4.T);
+            delta_b3 = dout;
+            delta_3 = weight_matrix_3.T.dot(dout);
 
-            # print '\ndout max :',dout.max(),' min:', dout.min()
-            dedw3 = dout.dot(relu4.T)
-            dedb3 = np.sum(dout,axis=1).reshape(bais_3.shape)
-            # print 'dedw3 max :',dedw3.max(),' min:', dedw3.min(),' i :',i
+            delta_3[hidden_layer_2 < 0] *= 0.01
+            delta_w2 = delta_3.dot(relu3.T);
+            delta_b2 = np.sum(delta_3, axis=1).reshape(bais_2.shape)
+            delta_2  = weight_matrix_2.T.dot(delta_3)
 
-            delta2 = weight_matrix_3.T.dot(dout)
-            delta2[hidden_layer_2<0] *= 0.01
-            dedw2 = delta2.dot(relu3.T)
-            dedb2 = np.sum(delta2, axis=1).reshape(bais_2.shape)
-            # print 'dedw2 max :',dedw2.max(),' min:',dedw2.min()
+            delta_2[hidden_layer_1 < 0] *= 0.01
+            delta_w1 = delta_2.dot(fc.T)
+            delta_b1 = np.sum(delta_2,axis=1).reshape(bais_1.shape)
+            delta_1  = weight_matrix_1.T.dot(delta_2)
 
+            #Conv
+            delta_1 = delta_1.reshape(pooled_1.shape)
+            delta_pooled_1 = d_pool(conv1, delta_1, pool_shape, 2)
+            delta_pooled_1[conv1<0] *= 0.01
+            delta_kernel_1, delta_conv_1 = d_convolution(pooled_0, delta_pooled_1, kernel_1)
 
-            delta1 = weight_matrix_2.T.dot(delta2)
-            delta1[hidden_layer_1 < 0] *= 0.01
-            dedw1 = delta1.dot(fc.T)
-            dedb1 = np.sum(delta1,axis=1).reshape(bais_1.shape)
-            # print 'dedw1 max :',dedw1.max(),' min:',dedw1.min()
-
-            delta0 = np.dot(weight_matrix_1.T, delta1).reshape(pooled_2.shape)
-            # print 'delta 0 :',delta0.shape
-
-            # conv layer-2
-            dconv2 = d_pool(relu2,delta0,pool_shape)
-            # print 'dconv2 shape :',dconv2.shape
-            dconv2[conv2<0] *= 0.01
-            # Decone-2
-            delta_kernel2, delta_conv2 = d_convolution(pooled_1, dconv2, kernel_2)
-            # print 'delta_kernel shape:',delta_kernel2.shape
-            # print 'delta_conv2 shape:',delta_conv2.shape
-            # print 'pooled 1 shape :',pooled_1.shape
-
-            # conv layer -1
-            dconv1 = d_pool(relu1, delta_conv2, pool_shape)
-            # print 'dconv1 shape :',dconv1.shape
-            dconv1[conv1<0] *= 0.01
-            delta_kernel1, delta_conv1 = d_convolution(img, dconv1, kernel_1)
-            # print 'delta_kernel1 shape:',delta_kernel1.shape
-            # print 'delta_conv1 shape:',delta_conv1.shape
-            # print 'img shape :',img.shape
-
-            # fdw2 = dedw2.flatten()
-            # fdw3 = dedw3.flatten()
-            #
-
-            dk1_ += delta_kernel1
-            dk2_ += delta_kernel2
-            dw1_ += dedw1
-            dw2_ += dedw2
-            dw3_ += dedw3
-            db1_ += dedb1
-            db2_ += dedb2
-            db3_ += dedb3
-
-            # Update Perameters
-            # kernel_1 = kernel_1 - (delta_kernel1)*0.01
-            # kernel_2 = kernel_2 - (delta_kernel2)*0.01
-            # weight_matrix_1 = weight_matrix_1 - (dedw1)*0.01
-            # weight_matrix_2 = weight_matrix_2 - (dedw2)*0.01
-            # weight_matrix_3 = weight_matrix_3 - (dedw3)*0.01
-            # bais_1 = bais_1 - (dedb1)*0.01
-            # bais_2 = bais_2 - (dedb2)*0.01
-            # bais_3 = bais_3 - (dedb3)*0.01
-
-            # print '\nkernel_1 max :',kernel_1.max(),' min :',kernel_1.min()
-            # print 'kernel_2 max :',kernel_2.max(),' min :',kernel_2.min()
-            # print 'weight_matrix_1 max :',weight_matrix_1.max(),' min :',weight_matrix_1.min()
-            # print 'weight_matrix_2 max :',weight_matrix_2.max(),' min :',weight_matrix_2.min()
-            # print 'weight_matrix_3 max :',weight_matrix_3.max(),' min :',weight_matrix_3.min()
-            # print 'bais_1 max :',bais_1.max(),' min :',bais_1.min()
-            # print 'bais_2 max :',bais_2.max(),' min :',bais_2.min()
-            # print 'bais_3 max :',bais_3.max(),' min :',bais_3.min()
+            delta_pooled_0 = d_pool(conv0, delta_conv_1, pool_shape, 2)
+            delta_pooled_0[conv0<0] *= 0.01
+            delta_kernel_0, delta_out = d_convolution(img, delta_pooled_0, kernel_0)
 
 
-            i += 1
-        # Update Perameters
-        # vk1 =  (vk1*beta)+(1-beta)*(dk1_/batchSize)
-        # vk2 =  (vk2*beta)+(1-beta)*(dk2_/batchSize)
-        # vw1 =  (vw1*beta)+(1-beta)*(dw1_/batchSize)
-        # vw2 =  (vw2*beta)+(1-beta)*(dw2_/batchSize)
-        # vw3 =  (vw3*beta)+(1-beta)*(dw3_/batchSize)
-        # vb1 =  (vb1*beta)+(1-beta)*(db1_/batchSize)
-        # vb2 =  (vb2*beta)+(1-beta)*(db2_/batchSize)
-        # vb3 =  (vb3*beta)+(1-beta)*(db3_/batchSize)
+            # Update weights
+            weight_matrix_3 -= (delta_w3 * LR);
+            bais_3          -= (delta_b3 * LR);
 
-        vk1 =  (dk1_/batchSize)
-        vk2 =  (dk2_/batchSize)
-        vw1 =  (dw1_/batchSize)
-        vw2 =  (dw2_/batchSize)
-        vw3 =  (dw3_/batchSize)
-        vb1 =  (db1_/batchSize)
-        vb2 =  (db2_/batchSize)
-        vb3 =  (db3_/batchSize)
+            weight_matrix_2 -= (delta_w2 * LR);
+            bais_2          -= (delta_b2 * LR);
 
-        kernel_1 -= vk1 * LR
-        kernel_2 -= vk2 * LR
-        weight_matrix_1 -= vw1 * LR
-        weight_matrix_2 -= vw2 * LR
-        weight_matrix_3 -= vw3 * LR
-        bais_1 -= vb1 * LR
-        bais_2 -= vb2 * LR
-        bais_3 -= vb3 * LR
+            weight_matrix_1 -= (delta_w1 * LR);
+            bais_1          -= (delta_b1 * LR);
 
-        print 'Epoch :',epoch ,' Total Cost :',total_cost/batchSize
+            # kernel
+            kernel_1        -= (delta_kernel_1 * LR)
+            kernel_0        -= (delta_kernel_0 * LR)
+
+
+
+
+
+            i += 1;
+
+        print 'From :',start ,' Total Cost :',total_cost/batchSize
         avrCost += total_cost
 
-        epoch -= batchSize #1
+        start -= batchSize #1
 
     print '\nAvg Cost  :',avrCost/(iteration), '\n Accuracy :',accuracy/iteration
     print '\n took :', ((time.time()-startTime)/60),' mins.'
     save = raw_input('save learning ?')
     if(save == 'y'):
         print 'Saving ...'
+        kernel_0.dump('kernel_0.dat')
         kernel_1.dump('kernel_1.dat')
-        kernel_2.dump('kernel_2.dat')
         weight_matrix_1.dump('weight_matrix_1.dat')
         weight_matrix_2.dump('weight_matrix_2.dat')
         weight_matrix_3.dump('weight_matrix_3.dat')
@@ -377,8 +298,8 @@ def test():
         if(probs.argmax() == label):
             accuracy += 1
 
-        show(conv1)
-        show(conv2)
+        # show(conv1)
+        # show(conv2)
 
     print 'test accuracy :',accuracy/till
 
@@ -390,9 +311,9 @@ def start():
     mode = raw_input("press 't' to Train and 'r' to test... ")
     if(mode =='t'):
         # Train
-        train()
+        train(False)
     elif(mode == 'r'):
         # test or run
-        test()
+        train(True)
 
 start()

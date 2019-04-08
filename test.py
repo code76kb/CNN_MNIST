@@ -24,9 +24,11 @@ imgs,label = mnData.load_testing()
 
 img = np.array(imgs[0]).reshape(1,28,28)
 
-img_norm = img - img.mean()
-img_norm /= img.std()
+# img_norm = img - img.mean()
+# img_norm /= img.std()
+# img_norm = img / img.max()
 
+print 'norm min max:',img_norm.min(),' :: ',img_norm.max()
 plt.imshow(img_norm.reshape(28,28))
 plt.show()
 
