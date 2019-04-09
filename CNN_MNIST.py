@@ -6,6 +6,12 @@ from mnist import MNIST
 import os
 import time
 from Util import *
+import cv2 as cv
+
+#for input img draw
+drawing = False
+ix,iy = -1,-1
+input_img = 0
 
 # Hyper Perameter
 no_kernels_0 = 8
@@ -221,12 +227,18 @@ def train(test):
 
 #Show
 
-def show(conv1):
+def show(conv1,conv2):
     i,_,_ = conv1.shape
 
     for k in range(i):
-        plt.subplot(i,1,k+1)
+        plt.subplot(i,2,k+1)
         plt.imshow(conv1[k,:,:])
+
+    j,_,_ = conv2.shape
+
+    for l in range(j):
+        plt.subplot(j,2,l+1)
+        plt.imshow((conv2[l,:,:]))
 
     plt.show()
 
@@ -240,14 +252,58 @@ def showK(conv1):
     plt.show()
 
 
+# mouse callback function
+def interactive_drawing(event,x,y,flags,param):
+    global ix,iy,drawing,input_img
+
+    if event==cv.EVENT_LBUTTONDOWN:
+        drawing=True
+        ix,iy=x,y
+
+    elif event==cv.EVENT_MOUSEMOVE:
+        if drawing==True:
+            cv.line(input_img,(ix,iy),(x,y),(200,0,0),5)
+            ix,iy=x,y
+    elif event==cv.EVENT_LBUTTONUP:
+        drawing=False
+        cv.line(input_img,(x,y),(x,y),(200,0,0),5)
+
+
+# get use input
+def getImgInput():
+    global input_img
+    input_img = np.zeros((140,140,1), np.uint8)
+    cv.namedWindow('Input')
+    cv.setMouseCallback('Input',interactive_drawing)
+
+    while(1):
+        cv.imshow('Input',input_img)
+        k=cv.waitKey(1)&0xFF
+        if k==27:
+            break
+    cv.destroyAllWindows()
+
+# input img show
+def inputShow():
+    global input_img
+    # while(1):
+    #      cv.imshow('Input-resize',input_img)
+    #      k=cv.waitKey(1)&0xFF
+    #      if k==27:
+    #          break
+    # cv.destroyAllWindows()
+    plt.imshow(input_img)
+    plt.show()
+
+
 #Test
 def test():
-
+    global input_img
     #Preparing input Data
     imgs,labels = mnData.load_training()
 
-    kernel_1 = np.load('kernel_1.dat')
-    kernel_2 = np.load('kernel_2.dat')
+    kernel_1 = np.load('kernel_0.dat')
+    kernel_2 = np.load('kernel_1.dat')
 
     weight_matrix_1 = np.load('weight_matrix_1.dat')
     weight_matrix_2 = np.load('weight_matrix_2.dat')
@@ -256,13 +312,31 @@ def test():
     bais_2 = np.load('bais_2.dat')
     bais_3 = np.load('bais_3.dat')
 
-    till = int(raw_input('till....'))
+    manual = int(raw_input('Manual test :1 Auto :0 \n '))
+    len = 10
+    if(manual == 1):
+        len = 10
+
+    else:
+        till = int(raw_input('till....'))
+        multipal = int(raw_input('from....'))
+        len = till-multipal
+
     accuracy = 0
     i = 0
-    multipal = int(raw_input('from....'))
-    while(i < till):
-        img = np.array(imgs[multipal+i]).astype(np.float32).reshape((1,28,28))
-        label = labels[multipal+i]
+
+    while(i < len):
+        if(manual == 0):
+            img = np.array(imgs[multipal+i]).astype(np.float32).reshape((1,28,28))
+            label = labels[multipal+i]
+        else:
+            getImgInput()
+            # print ('input img shape :',input_img.shape)
+            input_img = cv.resize(input_img,(28,28),interpolation=cv.INTER_AREA)
+            # print ('input img after re-shape :',input_img.shape)
+            img = input_img.astype(np.float32).reshape((1,28,28))
+            label = 0
+            inputShow()
 
         img -= (np.mean(img))
         img /= (np.std(img))
@@ -298,10 +372,10 @@ def test():
         if(probs.argmax() == label):
             accuracy += 1
 
-        # show(conv1)
+        show(conv1,conv2)
         # show(conv2)
 
-    print 'test accuracy :',accuracy/till
+    print 'test accuracy :',accuracy/(len)
 
 
 
@@ -314,6 +388,6 @@ def start():
         train(False)
     elif(mode == 'r'):
         # test or run
-        train(True)
+        test()
 
 start()
