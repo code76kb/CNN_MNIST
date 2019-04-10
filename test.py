@@ -26,16 +26,16 @@ def interactive_drawing(event,x,y,flags,param):
             cv.line(img,(x,y),(x,y),(255,255,255),3)
 
 
-img = np.zeros((224,224,1), np.uint8)
-cv.namedWindow('Input')
-cv.setMouseCallback('Input',interactive_drawing)
-
-while(1):
-    cv.imshow('Input',img)
-    k=cv.waitKey(1)&0xFF
-    if k==27:
-        break
-cv.destroyAllWindows()
+# img = np.zeros((224,224,1), np.uint8)
+# cv.namedWindow('Input')
+# cv.setMouseCallback('Input',interactive_drawing)
+#
+# while(1):
+#     cv.imshow('Input',img)
+#     k=cv.waitKey(1)&0xFF
+#     if k==27:
+#         break
+# cv.destroyAllWindows()
 
 
 # a = np.random.uniform(size=(2,3))

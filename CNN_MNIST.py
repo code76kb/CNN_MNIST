@@ -262,17 +262,17 @@ def interactive_drawing(event,x,y,flags,param):
 
     elif event==cv.EVENT_MOUSEMOVE:
         if drawing==True:
-            cv.line(input_img,(ix,iy),(x,y),(200,0,0),5)
+            cv.line(input_img,(ix,iy),(x,y),(255,255,255),5)
             ix,iy=x,y
     elif event==cv.EVENT_LBUTTONUP:
         drawing=False
-        cv.line(input_img,(x,y),(x,y),(200,0,0),5)
+        cv.line(input_img,(x,y),(x,y),(200,255,255),5)
 
 
 # get use input
 def getImgInput():
     global input_img
-    input_img = np.zeros((140,140,1), np.uint8)
+    input_img = np.zeros((140,140,3), np.uint8)
     cv.namedWindow('Input')
     cv.setMouseCallback('Input',interactive_drawing)
 
@@ -332,11 +332,13 @@ def test():
         else:
             getImgInput()
             # print ('input img shape :',input_img.shape)
+            input_img = cv.cvtColor(input_img, cv.COLOR_BGR2GRAY)
+            # print ('input img after cvt to gray :',input_img.shape)
             input_img = cv.resize(input_img,(28,28),interpolation=cv.INTER_AREA)
-            # print ('input img after re-shape :',input_img.shape)
+
             img = input_img.astype(np.float32).reshape((1,28,28))
             label = 0
-            inputShow()
+            # inputShow()
 
         img -= (np.mean(img))
         img /= (np.std(img))
@@ -372,7 +374,7 @@ def test():
         if(probs.argmax() == label):
             accuracy += 1
 
-        show(conv1,conv2)
+        # show(conv1,conv2)
         # show(conv2)
 
     print 'test accuracy :',accuracy/(len)
