@@ -284,15 +284,16 @@ def getImgInput():
     cv.destroyAllWindows()
 
 # input img show
-def inputShow():
-    global input_img
+def inputShow(img):
+
     # while(1):
     #      cv.imshow('Input-resize',input_img)
     #      k=cv.waitKey(1)&0xFF
     #      if k==27:
     #          break
     # cv.destroyAllWindows()
-    plt.imshow(input_img)
+    img = img.reshape((28,28))
+    plt.imshow(img)
     plt.show()
 
 
@@ -338,7 +339,7 @@ def test():
 
             img = input_img.astype(np.float32).reshape((1,28,28))
             label = 0
-            # inputShow()
+            inputShow(img)
 
         img -= (np.mean(img))
         img /= (np.std(img))
