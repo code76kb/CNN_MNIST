@@ -6,6 +6,7 @@ from mnist import MNIST
 import os
 import time
 from Util import *
+from ImgAg import *
 import cv2 as cv
 
 #for input img draw
@@ -47,7 +48,7 @@ bais_2 = 0
 bais_3 = 0
 
 # load input
-mnData = MNIST("/home/satyaprakash/Downloads/mnist")
+mnData = MNIST("/home/rahul/sim/DataSet/MNIST")
 # mnData = MNIST("/mnt/66C2AAD8C2AAABAD/ML_init/DataSets/mnist")
 
 
@@ -62,11 +63,11 @@ def train(test):
     till = int(raw_input('Till.......'))
     batchSize = int(raw_input(' batchSize ...'))
 
-    LR = 0.01
+    LR = 0.001
 
 
     # initialize Perameter
-    if(os.path.isfile('/home/satyaprakash/CNN_MNIST/kernel_1.dat')):
+    if(os.path.isfile('/home/rahul/sim/CNN_MNIST/kernel_1.dat')):
         print 'Starting from last, loading old kernels....'
 
         kernel_0 = np.load('kernel_0.dat')
@@ -114,7 +115,12 @@ def train(test):
 
         while i < batchSize:
 
-            img = np.array(imgs[(start - i) ]).astype(np.float32).reshape((1,28,28))
+            rawImg = np.array(imgs[(start - i) ]).astype(np.float32).reshape((28,28))
+            img_ag = transForm(rawImg,rawImg.shape)
+            img = img_ag.reshape((1,28,28))
+            
+            #img = np.array(imgs[(start - i) ]).astype(np.float32).reshape((1,28,28))
+
 
             img -= (np.mean(img))
             img /= (np.std(img))
@@ -339,7 +345,7 @@ def test():
 
             img = input_img.astype(np.float32).reshape((1,28,28))
             label = 0
-            inputShow(img)
+            #inputShow(img)
 
         img -= (np.mean(img))
         img /= (np.std(img))
@@ -381,7 +387,11 @@ def test():
     print 'test accuracy :',accuracy/(len)
 
 
-
+def agTest():
+    imgs,labels = mnData.load_training()
+    rawImg = np.array(imgs[2]).astype(np.float32).reshape((28,28))
+    img_ag = transForm(rawImg,rawImg.shape)
+    plot([rawImg,img_ag])
 
 
 def start():
@@ -392,5 +402,7 @@ def start():
     elif(mode == 'r'):
         # test or run
         test()
+    elif(mode == "a"):
+        agTest()
 
 start()
